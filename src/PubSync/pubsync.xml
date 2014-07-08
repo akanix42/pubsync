@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<root xmlns="http://tempuri.org/pubsync.xsd">
+  <Profiles>
+    <Profile Name="Dev" PublishingPath="c:\testpub2"/>
+    <Profile Name="InternalStaging" PublishingPath="\\hudrte02\c$\test"/>
+    <Profile Name="ExternalStaging" PublishingPath="\\hudrte02\c$\test"/>
+    <Profile Name="Live" PublishingPath="\\hudrte02\c$\test"/>
+  </Profiles>
+  <Folders>
+    <Folder Path="." LevelsToSync="1" CopyMethod="PubSync">
+      <Exclude Type="File" Expression=".*.cs.+" />
+      <Exclude Type="File" Expression=".*.zip" />
+      <Exclude Type="Folder" Expression="." />
+      <Replace Expression=".*.zip" Replacement=".*.zip.test" />
+
+    </Folder>
+    <Folder Path="bin" CopyMethod="PubSync"></Folder>
+    <Folder Path="Content" CopyMethod="PubSync">
+      <Exclude Type="Folder" Expression="uploads" />
+    </Folder>
+    <Folder Path="Views" CopyMethod="PubSync"></Folder>
+  </Folders>
+</root>
