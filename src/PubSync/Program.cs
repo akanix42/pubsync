@@ -37,6 +37,7 @@ namespace PubSync
             if (argsArray.Length == 0)
             {
                 Console.WriteLine("Publishing profile not specified!");
+                Environment.ExitCode = 1;
                 return;
             }
             var args = new Args(argsArray);
@@ -58,6 +59,8 @@ namespace PubSync
                                      : SyncFolders(profileName, LoadAndValidateXml());
 
             Console.WriteLine(syncSucceeded ? "Sync finished." : "Sync failed.");
+            if (Environment.ExitCode == 0 && !syncSucceeded)
+                Environment.ExitCode = 1;
         }
 
         static void GetFilesInDir(int basePathLength, DirectoryInfo dir, ExclusionRules exclusionRules,  Dictionary<string, FileInfo> filesDictionary, string location)
@@ -201,16 +204,17 @@ namespace PubSync
             var publishingPath = profile.Attribute("PublishingPath").Value;
 
             // Copy the files!
+            var wasSuccessful = true;
             foreach (var folder in root.Element(ns + "Folders").Elements(ns + "Folder"))
             {
                 var copyMethod = folder.Attribute("CopyMethod");
                 if (copyMethod != null && copyMethod.Value.ToLower() == "pubsync")
-                    SyncUsingPubsync(publishingPath, ns, folder, profile);
+                    wasSuccessful = wasSuccessful && SyncUsingPubsync(publishingPath, ns, folder, profile);
                 else
-                    SyncUsingRobocopy(publishingPath, ns, folder);
+                    wasSuccessful = wasSuccessful && SyncUsingRobocopy(publishingPath, ns, folder);
             }
 
-            return true;
+            return wasSuccessful;
         }
 
         static string ApplyReplacementsToFileName(string filename, List<Replacement> replacements)
@@ -246,7 +250,7 @@ namespace PubSync
                 .ToList();
         }
 
-        static void SyncUsingPubsync(string publishingPath, string xmlNamespace, XElement folder, XElement profile)
+        static bool SyncUsingPubsync(string publishingPath, string xmlNamespace, XElement folder, XElement profile)
         {
             try
             {
@@ -281,7 +285,7 @@ namespace PubSync
                 {
                     Console.WriteLine("Folder '{0}' does not exist on the source.", folderPath);
                     PrintSeparator();
-                    return;
+                    return true;
                 }
                 GetFilesInDir(sourceDir.FullName.Length, sourceDir, exclusionRules, sourceFilesDictionary, "Source");
 
@@ -362,14 +366,16 @@ namespace PubSync
                 Console.WriteLine("Skipped: {0}\r\nNew: {1}\r\nChanged: {2}\r\nDeleted: {3}\r\nErrors: {4}", skippedFilesCount, newFilesCount, changedFilesCount, deletedFilesCount, errorCount);
                 Console.WriteLine("Time: {0}", stopwatch.Elapsed);
                 PrintSeparator();
+                return errorCount==0;
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
+                return false;
             }
         }
 
-        static void SyncUsingRobocopy(string publishingPath, string xmlNamespace, XElement folder)
+        static bool SyncUsingRobocopy(string publishingPath, string xmlNamespace, XElement folder)
         {
             var stopWatch = new Stopwatch();
             var foldersToExclude = folder.Elements(xmlNamespace + "Exclude").Where(e => e.Attribute("Type").Value == "Folder").Select(d => d.Attribute("Expression").Value).ToList();
@@ -413,6 +419,8 @@ namespace PubSync
             outputString = Regex.Replace(outputString, @"\r\n\s+Times :.*?Ended :.*?\r\n", "\r\n", RegexOptions.Singleline);
 
             Console.WriteLine(outputString);
+            
+            return robocopy.ExitCode == 0;
         }
 
     }
